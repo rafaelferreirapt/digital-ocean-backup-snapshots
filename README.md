@@ -1,6 +1,9 @@
 Backup your droplets with snapshots
 ==============================
 
+With this python script you can backup your droplets in different accounts every day (cronjob) and the script will send
+to you a report or a alert when the droplet is down after the backup. All the alerts are send via email.
+
 #### Requirements
 Python wrapper for DigitalOcean: [PyOcean](https://github.com/bsdnoobz/pyocean/)
 
