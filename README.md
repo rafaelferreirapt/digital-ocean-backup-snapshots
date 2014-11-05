@@ -11,6 +11,8 @@ Install:
 sudo pip install digitalocean-python
 
 #### Usage
+### Fill the data in backupdata.py
+
 **snapshots.py:**
 
 ACCESS_TOKEN1 = "YOUR_ACCESS_TOKEN" #other account

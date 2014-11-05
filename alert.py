@@ -2,11 +2,7 @@ __author__ = 'gipmon'
 from email.mime.text import MIMEText
 import smtplib
 import datetime
-
-username = "EMAIL"
-password = "PASSWORD"
-smtp_url = "SMTP_URL"
-smtp_port = 587 # PORT NUMBER
+from backupdata import *
 
 def send_alert_droplet_down(femail, temail, droplet):
     send_email(femail, temail, "[DIGITAL OCEAN BACKUPS] Port down", "The droplet: "+droplet.name+" is down!")

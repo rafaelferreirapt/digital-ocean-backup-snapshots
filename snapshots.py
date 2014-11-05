@@ -4,13 +4,7 @@ import pyocean
 import datetime
 import alert
 import droplet_status
-
-accountsList = ["YOUR_ACCESS_TOKEN", \
-                "YOUR_ACCESS_TOKEN"]
-
-max_snaps = 15
-femail = "EMAIL"
-temail = "EMAIL"
+from backupdata import *
 
 report = ""
 
@@ -91,6 +85,7 @@ if __name__=="__main__":
                 if not droplet_status.droplet_down(droplet):
                     alert.send_alert_droplet_down(femail, temail, droplet)
                 backup.cleanSnapshots(droplet)
+                report += "\n"
     except pyocean.exceptions.DOException as e:
         report += ('ERROR: %s' % e)
     alert.send_report(femail, temail, report)
