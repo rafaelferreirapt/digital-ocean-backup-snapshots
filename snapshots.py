@@ -4,6 +4,7 @@ import pyocean
 import datetime
 import alert
 import droplet_status
+import time
 from backupdata import *
 
 report = ""
@@ -80,6 +81,7 @@ if __name__=="__main__":
             for droplet in backup.digitalocean.droplet.all():
                 if backup.hasSnap(droplet) == False:
                     backup.snapshot(droplet)
+                    time.sleep(60)
                 else:
                     report += "[Snapshot already taken for:] " + droplet.name + "\n"
                 if not droplet_status.droplet_down(droplet):
