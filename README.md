@@ -11,9 +11,7 @@ Install:
 sudo pip install digitalocean-python
 
 #### Usage
-### Fill the data in backupdata.py
-
-**snapshots.py:**
+### Fill the data in config.json
 
 ACCESS_TOKEN1 = "YOUR_ACCESS_TOKEN" #other account
 
@@ -24,8 +22,6 @@ max_snaps = NUMBER # max snapshots for droplet stored
 femail = "EMAIL" #from email for the alert messages
 
 temail = "EMAIL" # to email for the alert messages
-
-**alert.py:**
 
 username = "EMAIL" #username for the SMTP server
 
