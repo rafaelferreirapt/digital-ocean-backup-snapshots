@@ -1,93 +1,117 @@
 __author__ = 'gipmon'
-import sys
 import pyocean
 import datetime
 import alert
 import droplet_status
 import time
-from backupdata import *
+import json
 
-report = ""
 
-class Backup():
+class Backup:
     def __init__(self, access_token=None):
-        self.digitalocean = access_token
+        self.digital_ocean = access_token
+        self.report = ""
+        config_file = open("config.json", "r")
+        self.backup_data = json.load(config_file)
 
-    def printAllSnapshots(self):
-        global report
+    def print_all_snapshots(self):
         try:
-            for droplet in self.digitalocean.droplet.all():
-                report += self.printSnapshots(droplet)
+            for droplet in self.digital_ocean.droplet.all():
+                self.report += self.print_snapshots(droplet)
         except pyocean.exceptions.DOException as e:
-            report = ('ERROR: %s\n' % e)
+            self.report = ('ERROR: %s\n' % e)
 
-    def printSnapshots(self, droplet = None):
-        global report
-        if droplet == None:
+    def print_snapshots(self, droplet=None):
+        if droplet is None:
             return None
-        report += "[Snapshots for:] " + droplet.name + "\n"
-        snaps = droplet.get_snapshots()
-        for snap in snaps:
-            report += str(snap) + "\n"
 
-    def snapshot(self, droplet = None):
-        global report
-        if droplet == None:
+        self.report += "[Snapshots for:] " + droplet.name + "\n"
+        snaps = droplet.get_snapshots()
+
+        for snap in snaps:
+            self.report += str(snap) + "\n"
+
+    def snapshot(self, droplet=None):
+        if droplet is None:
             return None
         try:
-            report += "[Power off:] " + droplet.name + "\n"
+            self.report += "[Power off:] " + droplet.name + "\n"
             droplet.power_off()
 
-            report += "[Create snapshot for:] " + droplet.name + "\n"
-            droplet.create_snapshot(droplet.name + str(datetime.datetime.now().day) + str(datetime.datetime.now().month)\
-                                    + str(datetime.datetime.now().year))
+            time.sleep(60)
 
-            self.printSnapshots(droplet)
+            self.report += "[Create snapshot for:] " + droplet.name + "\n"
+            droplet.create_snapshot(droplet.name + str(datetime.datetime.now().day) +
+                                    str(datetime.datetime.now().month) + str(datetime.datetime.now().year))
+
+            self.print_snapshots(droplet)
         except pyocean.exceptions.DOException as e:
-            report += ('ERROR: %s' % e)
+            self.report += ('ERROR: %s' % e)
 
-    def snapsToList(self, snapshots = None):
-        if snapshots == None:
+    @staticmethod
+    def snaps_to_list(snap=None):
+        if snap is None:
             return None
-        return [snap for snap in snapshots]
+        return [snap for snap in snap]
 
-    def hasSnap(self, droplet = None):
-        if droplet == None:
+    @staticmethod
+    def has_snap(droplet=None):
+        if droplet is None:
             return None
-        snaps = self.snapsToList(droplet.get_snapshots())
-        return snaps[-1].name == (droplet.name + str(datetime.datetime.now().day) + str(datetime.datetime.now().month)\
-                                  + str(datetime.datetime.now().year))
 
-    def cleanSnapshots(self, droplet = None):
-        global report
-        if droplet == None:
+        snaps = Backup.snaps_to_list(droplet.get_snapshots())
+
+        return snaps[-1].name == (droplet.name + str(datetime.datetime.now().day) + str(datetime.datetime.now().month) +
+                                  str(datetime.datetime.now().year))
+
+    def clean_snapshots(self, droplet=None):
+        if droplet is None:
             return None
-        snaps = self.snapsToList(droplet.get_snapshots())
-        if len(snaps) <= max_snaps:
-            report += "[No need to clean snaps for:] " + droplet.name + "\n"
+        snaps = self.snaps_to_list(droplet.get_snapshots())
+
+        if len(snaps) <= self.backup_data["max_snaps"]:
+            self.report += "[No need to clean snaps for:] " + droplet.name + "\n"
         else:
-            while len(snaps) > max_snaps:
-                report += "[TASK: Destroying snap:] " + snaps[0].name + "\n"
+            while len(snaps) > self.backup_data["max_snaps"]:
+                self.report += "[TASK: Destroying snap:] " + snaps[0].name + "\n"
                 snaps[0].destroy()
-                report += "[DONE: left:] " + str(len(snaps)-(max_snaps+1)) + "\n"
-                snaps = self.snapsToList(droplet.get_snapshots())
-        return report
+                self.report += "[DONE: left:] " + str(len(snaps) - (self.backup_data["max_snaps"] + 1)) + "\n"
+                snaps = self.snaps_to_list(droplet.get_snapshots())
 
-if __name__=="__main__":
+        return self.report
+
+    def run(self):
+        try:
+            for account in self.backup_data["accountsList"]:
+                self.digital_ocean = pyocean.DigitalOcean(account)
+                for droplet in backup.digital_ocean.droplet.all():
+                    if droplet.status == "off":
+                        droplet.power_on()
+                        time.sleep(60)
+
+                    if self.has_snap(droplet) is False:
+                        backup.snapshot(droplet)
+                        time.sleep(60)
+                    else:
+                        self.report += "[Snapshot already taken for:] " + droplet.name + "\n"
+
+                    # see if apache is running
+                    if not droplet_status.droplet_down(droplet):
+                        alert.send_alert_droplet_down(self.backup_data["femail"], self.backup_data["temail"], droplet)
+
+                    self.clean_snapshots(droplet)
+                    self.report += "\n"
+
+                # make all droplets active
+                for droplet in backup.digital_ocean.droplet.all():
+                    if droplet.status == "off":
+                        droplet.power_on()
+
+        except pyocean.exceptions.DOException as e:
+            self.report += ('ERROR: %s' % e)
+        alert.send_report(self.backup_data["femail"], self.backup_data["temail"], self.report)
+
+
+if __name__ == "__main__":
     backup = Backup()
-    try:
-        for accout in accountsList:
-            backup.digitalocean = pyocean.DigitalOcean(accout)
-            for droplet in backup.digitalocean.droplet.all():
-                if backup.hasSnap(droplet) == False:
-                    backup.snapshot(droplet)
-                    time.sleep(60)
-                else:
-                    report += "[Snapshot already taken for:] " + droplet.name + "\n"
-                if not droplet_status.droplet_down(droplet):
-                    alert.send_alert_droplet_down(femail, temail, droplet)
-                backup.cleanSnapshots(droplet)
-                report += "\n"
-    except pyocean.exceptions.DOException as e:
-        report += ('ERROR: %s' % e)
-    alert.send_report(femail, temail, report)
+    backup.run()
