@@ -1,4 +1,3 @@
-__author__ = 'gipmon'
 import pyocean
 import datetime
 import alert
@@ -36,7 +35,13 @@ class Backup:
             return None
         try:
             self.report += "[Power off:] " + droplet.name + "\n"
-            droplet.power_off()
+
+            try:
+                droplet.power_off()
+                time.sleep(60)
+            except pyocean.exceptions.DOException as e:
+                if e.code is not 422:
+                    self.report += ('ERROR: %s' % e)
 
             time.sleep(60)
 
@@ -84,10 +89,17 @@ class Backup:
         try:
             for account in self.backup_data["accountsList"]:
                 self.digital_ocean = pyocean.DigitalOcean(account)
+                
                 for droplet in backup.digital_ocean.droplet.all():
                     if droplet.status == "off":
-                        droplet.power_on()
-                        time.sleep(60)
+                        try:
+                            droplet.power_on()
+                            time.sleep(60)
+                        except pyocean.exceptions.DOException as e:
+                            if e.code is 422:
+                                continue
+                            else:
+                                self.report += ('ERROR: %s' % e)
 
                     if self.has_snap(droplet) is False:
                         backup.snapshot(droplet)
@@ -105,7 +117,14 @@ class Backup:
                 # make all droplets active
                 for droplet in backup.digital_ocean.droplet.all():
                     if droplet.status == "off":
-                        droplet.power_on()
+                        try:
+                            droplet.power_on()
+                            time.sleep(60)
+                        except pyocean.exceptions.DOException as e:
+                            if e.code is 422:
+                                continue
+                            else:
+                                self.report += ('ERROR: %s' % e)
 
         except pyocean.exceptions.DOException as e:
             self.report += ('ERROR: %s' % e)
