@@ -33,12 +33,27 @@ class Backup:
                 try:
                     self.report += "[Power off:] " + droplet.name + "\n"
 
+                    # attempt grateful shutdown
+                    droplet.shutdown()
+
+                    # now we must refresh the droplet state
+                    droplet = self.digital_ocean.droplet.get(droplet.id)
+
+                    timeout = 0
+
+                    while droplet.status != "off" and timeout < 20:
+                        # try to see if is power off
+                        droplet = self.digital_ocean.droplet.get(droplet.id)
+
+                        # wait 1 sec
+                        time.sleep(1)
+
                     # now power off
                     droplet.power_off()
                     time.sleep(20)
 
                     # now we must refresh the droplet state
-                    droplet = backup.digital_ocean.droplet.get(droplet.id)
+                    droplet = self.digital_ocean.droplet.get(droplet.id)
                 except pyocean.exceptions.DOException as e:
                     if e.code is not 422:
                         self.report += ('ERROR: %s' % e)
@@ -48,7 +63,7 @@ class Backup:
                                     str(datetime.datetime.now().month) + str(datetime.datetime.now().year))
 
             # now we must refresh the droplet state
-            droplet = backup.digital_ocean.droplet.get(droplet.id)
+            droplet = self.digital_ocean.droplet.get(droplet.id)
 
             # print all the snapshots taken so far
             self.print_snapshots(droplet)
@@ -94,13 +109,14 @@ class Backup:
             for account in self.backup_data["accountsList"]:
                 self.digital_ocean = pyocean.DigitalOcean(account)
 
-                for droplet in backup.digital_ocean.droplet.all():
+                for droplet in self.digital_ocean.droplet.all():
                     # refresh the state of the digital ocean droplet
-                    droplet = backup.digital_ocean.droplet.get(droplet.id)
+                    droplet = self.digital_ocean.droplet.get(droplet.id)
 
                     # if need to be backup the droplet must be made a snapshot to the droplet
                     if self.need_to_backup(droplet):
-                        backup.snapshot(droplet)
+                        self.snapshot(droplet)
+                        self.clean_snapshots(droplet)
                     else:
                         self.report += "[Snapshot already taken for:] " + droplet.name + "\n"
 
@@ -113,13 +129,12 @@ class Backup:
                     except socket.error:
                         self.alert.send_alert_droplet_down(droplet)
 
-                    self.clean_snapshots(droplet)
                     self.report += "\n"
 
                 # make all droplets active, they must be active
-                for droplet in backup.digital_ocean.droplet.all():
+                for droplet in self.digital_ocean.droplet.all():
                     # refresh the state of the digital ocean droplet
-                    droplet = backup.digital_ocean.droplet.get(droplet.id)
+                    droplet = self.digital_ocean.droplet.get(droplet.id)
 
                     if droplet.status == "off":
                         try:
